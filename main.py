@@ -7,7 +7,7 @@ import search
 
 # --- CONFIGURATION ---
 WIDTH, HEIGHT = 800, 600
-TILE_SIZE = 10 
+TILE_SIZE = 10
 COLS = WIDTH // TILE_SIZE
 ROWS = HEIGHT // TILE_SIZE
 
@@ -34,20 +34,27 @@ while path is None:
     attempts += 1
     print(f"Generation Attempt {attempts}...")
 
-    # 1. Generate Base Rooms (Cellular Automata)
-    # Using 0.50 density for distinct, organic rooms
-    base_grid = automata_generator.generate_cave(ROWS, COLS, iterations=5, fill_percent=0.50)
+# 1. Generate Rooms (High density for small rooms)
+    base_grid = automata_generator.generate_cave(ROWS, COLS, iterations=2, fill_percent=0.80)
 
-    # 2. Connect Isolated Islands (Flood Fill Miner)
-    # This guarantees 100% connectivity but makes sharp, geometric tunnels
+    # 2. Connect Rooms (Miner digs '2's)
     connected_grid = miner.mine_tunnels(base_grid)
 
-    # 3. Final Smoothing Pass (The "Natural" Look)
-    # We feed the connected grid back into the generator for 2 iterations.
-    # This erodes the sharp edges of the tunnels.
-    grid_map = automata_generator.generate_cave(ROWS, COLS, iterations=2, input_grid=connected_grid)
+    # 3. Smooth (Respects '2's, erodes walls around them)
+    smoothed_grid = automata_generator.generate_cave(ROWS, COLS, iterations=2, input_grid=connected_grid)
 
-    # 4. Pick Start/End
+    # 4. CLEANUP: Convert all '2's back to '1's
+    grid_map = []
+    for r in range(ROWS):
+        new_row = []
+        for c in range(COLS):
+            if smoothed_grid[r][c] == 2:
+                new_row.append(1) # Convert Tunnel -> Floor
+            else:
+                new_row.append(smoothed_grid[r][c])
+        grid_map.append(new_row)
+
+    # 5. Pick Start/End
     # Find all valid floor tiles
     floors = []
     for r in range(ROWS):
