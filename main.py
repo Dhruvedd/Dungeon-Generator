@@ -3,6 +3,7 @@ import sys
 import generator
 import random
 import search
+import automata_generator
 
 # --- CONFIGURATION ---
 # Screen dimensions
@@ -25,7 +26,9 @@ pygame.display.set_caption("AI Dungeon Master - Milestone 1")
 clock = pygame.time.Clock()
 
 # --- THE DATA ---
-grid_map = generator.generate_drunken_walk(ROWS, COLS, max_steps=10000)
+#grid_map = generator.generate_drunken_walk(ROWS, COLS, max_steps=10000)
+
+grid_map = automata_generator.generate_cave(ROWS, COLS, iterations=1)
 
 # Define Start (Center)
 start_pos = (ROWS // 2, COLS // 2)
