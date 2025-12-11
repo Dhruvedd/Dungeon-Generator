@@ -1,14 +1,14 @@
 import random
 
-def generate_cave(rows, cols, iterations=5):
+def generate_cave(rows, cols, iterations=5, fill_percent=0.48):
     """
     Generates a cave using Cellular Automata (Constraint Satisfaction).
     1. Fill map with random noise (50% chance of wall).
     2. Apply smoothing rules (Constraints) multiple times.
     """
     # 1. INITIALIZATION (Random Noise)
-    # We create a grid where every tile has a 45% chance to be a Wall (0)
-    # and a 55% chance to be a Floor (1).
+    # We create a grid where every tile has a fill_percent chance to be a Wall (0)
+    # and a 1-fill_percent chance to be a Floor (1).
     grid = []
     for r in range(rows):
         row = []
@@ -18,7 +18,7 @@ def generate_cave(rows, cols, iterations=5):
                 row.append(0) 
             else:
                 # 45% chance of wall
-                if random.random() < 0.45:
+                if random.random() < fill_percent:
                     row.append(0)
                 else:
                     row.append(1)

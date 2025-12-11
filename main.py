@@ -4,6 +4,7 @@ import generator
 import random
 import search
 import automata_generator
+import miner
 
 # --- CONFIGURATION ---
 # Screen dimensions
@@ -26,9 +27,19 @@ pygame.display.set_caption("AI Dungeon Master - Milestone 1")
 clock = pygame.time.Clock()
 
 # --- THE DATA ---
+
+#This is the drunken walk, bad idea but a good baseline to start building from
 #grid_map = generator.generate_drunken_walk(ROWS, COLS, max_steps=10000)
 
-grid_map = automata_generator.generate_cave(ROWS, COLS, iterations=1)
+# Cellular Auromata pluse modified tunnel miner method (similar to drunken walker but not as random)
+
+#We use high density to generate random rooms in the grid, most likely unconnected
+print("Generating rooms...")
+room_grid = automata_generator.generate_cave(ROWS, COLS, iterations=5, fill_percent=0.65)
+
+# We pass the room_grid into the miner to connect the islands.
+print("Mining corridors...")
+grid_map = miner.mine_tunnels(room_grid, max_tunnels=70, max_length=12)
 
 # Define Start (Center)
 start_pos = (ROWS // 2, COLS // 2)
