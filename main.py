@@ -1,35 +1,27 @@
 import pygame
 import sys
-import generator
 import random
-import search
 import automata_generator
 import miner
+import search
 
 # --- CONFIGURATION ---
-# Screen dimensions
 WIDTH, HEIGHT = 800, 600
-TILE_SIZE = 10
-
-# Calculate how many tiles fit on screen
+TILE_SIZE = 10 
 COLS = WIDTH // TILE_SIZE
 ROWS = HEIGHT // TILE_SIZE
 
-# Colors (R, G, B)F
-COLOR_WALL = (20, 20, 20)      # Dark Grey
-COLOR_FLOOR = (200, 200, 200)  # Light Grey
-COLOR_GRID = (50, 50, 50)      # For grid lines
+COLOR_WALL = (20, 20, 20)      
+COLOR_FLOOR = (200, 200, 200)  
+COLOR_GRID = (50, 50, 50)      
 
 # --- INITIALIZATION ---
 pygame.init()
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
-pygame.display.set_caption("AI Dungeon Master - Milestone 1")
+pygame.display.set_caption("AI Dungeon Master - Final Natural Cave")
 clock = pygame.time.Clock()
 
-# --- THE DATA ---
-
-#This is the drunken walk, bad idea but a good baseline to start building from
-#grid_map = generator.generate_drunken_walk(ROWS, COLS, max_steps=10000)
+# --- THE DATA (NATURAL CAVE PIPELINE) ---
 
 path = None
 grid_map = []
@@ -42,29 +34,39 @@ while path is None:
     attempts += 1
     print(f"Generation Attempt {attempts}...")
 
-    # 1. Generate Rooms (The Cheese)
-    room_grid = automata_generator.generate_cave(ROWS, COLS, iterations=5, fill_percent=0.65)
+    # 1. Generate Base Rooms (Cellular Automata)
+    # Using 0.50 density for distinct, organic rooms
+    base_grid = automata_generator.generate_cave(ROWS, COLS, iterations=5, fill_percent=0.50)
 
-    # 2. Connect Rooms (The Guided Miner)
-    # We use fewer tunnels now because they are targeted and effective
-    grid_map = miner.mine_tunnels(room_grid)
+    # 2. Connect Isolated Islands (Flood Fill Miner)
+    # This guarantees 100% connectivity but makes sharp, geometric tunnels
+    connected_grid = miner.mine_tunnels(base_grid)
 
-    # 3. Pick Start/End
-    # (Simple logic: Pick random floor tiles)
-    while True:
-        sr, sc = random.randint(0, ROWS-1), random.randint(0, COLS-1)
-        if grid_map[sr][sc] == 1:
-            start_pos = (sr, sc)
-            break
+    # 3. Final Smoothing Pass (The "Natural" Look)
+    # We feed the connected grid back into the generator for 2 iterations.
+    # This erodes the sharp edges of the tunnels.
+    grid_map = automata_generator.generate_cave(ROWS, COLS, iterations=2, input_grid=connected_grid)
+
+    # 4. Pick Start/End
+    # Find all valid floor tiles
+    floors = []
+    for r in range(ROWS):
+        for c in range(COLS):
+            if grid_map[r][c] == 1:
+                floors.append((r, c))
     
-    while True:
-        er, ec = random.randint(0, ROWS-1), random.randint(0, COLS-1)
-        if grid_map[er][ec] == 1 and (er,ec) != start_pos:
-            end_pos = (er, ec)
-            break
+    # If map is somehow empty, retry
+    if len(floors) < 2:
+        continue
 
-    # 4. THE CHECK: Does a path exist?
-    # If this returns a list, the loop breaks. If None, it repeats.
+    start_pos = random.choice(floors)
+    end_pos = random.choice(floors)
+    
+    # Ensure start and end are different
+    while end_pos == start_pos:
+        end_pos = random.choice(floors)
+
+    # 5. THE CHECK: Verify Path
     path = search.astar(grid_map, start_pos, end_pos)
 
 print(f"Success! Map generated in {attempts} attempts.")
@@ -84,40 +86,35 @@ def draw_grid():
             
             # Draw base tile
             pygame.draw.rect(screen, color, (x, y, TILE_SIZE, TILE_SIZE))
-            #pygame.draw.rect(screen, COLOR_GRID, (x, y, TILE_SIZE, TILE_SIZE), 1)
+            # pygame.draw.rect(screen, COLOR_GRID, (x, y, TILE_SIZE, TILE_SIZE), 1)
 
     # --- Draw Path ---
     if path:
         for (r, c) in path:
             x = c * TILE_SIZE
             y = r * TILE_SIZE
-            # Draw a smaller blue square for the path
             center_offset = TILE_SIZE // 4
             pygame.draw.rect(screen, (0, 0, 255), (x + center_offset, y + center_offset, TILE_SIZE//2, TILE_SIZE//2))
 
     # --- Draw Start & End ---
-    # Start = Green
     sx, sy = start_pos[1] * TILE_SIZE, start_pos[0] * TILE_SIZE
     pygame.draw.rect(screen, (0, 255, 0), (sx, sy, TILE_SIZE, TILE_SIZE))
 
-    # End = Red
     ex, ey = end_pos[1] * TILE_SIZE, end_pos[0] * TILE_SIZE
     pygame.draw.rect(screen, (255, 0, 0), (ex, ey, TILE_SIZE, TILE_SIZE))
+
 # --- MAIN LOOP ---
 running = True
 while running:
-    # 1. Event Handling (Input)
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
             
-    # 2. Drawing
-    screen.fill(COLOR_WALL) # Clear screen
-    draw_grid()             # Draw our map
+    screen.fill(COLOR_WALL) 
+    draw_grid()             
     
-    # 3. Update Display
     pygame.display.flip()
-    clock.tick(60) # Limit to 60 FPS
+    clock.tick(60)
 
 pygame.quit()
 sys.exit()
