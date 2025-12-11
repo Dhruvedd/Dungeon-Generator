@@ -31,32 +31,43 @@ clock = pygame.time.Clock()
 #This is the drunken walk, bad idea but a good baseline to start building from
 #grid_map = generator.generate_drunken_walk(ROWS, COLS, max_steps=10000)
 
-# Cellular Auromata pluse modified tunnel miner method (similar to drunken walker but not as random)
+path = None
+grid_map = []
+start_pos = (0,0)
+end_pos = (0,0)
 
-#We use high density to generate random rooms in the grid, most likely unconnected
-print("Generating rooms...")
-room_grid = automata_generator.generate_cave(ROWS, COLS, iterations=5, fill_percent=0.65)
+# Keep regenerating until we get a solvable map
+attempts = 0
+while path is None:
+    attempts += 1
+    print(f"Generation Attempt {attempts}...")
 
-# We pass the room_grid into the miner to connect the islands.
-print("Mining corridors...")
-grid_map = miner.mine_tunnels(room_grid, max_tunnels=70, max_length=12)
+    # 1. Generate Rooms (The Cheese)
+    room_grid = automata_generator.generate_cave(ROWS, COLS, iterations=5, fill_percent=0.65)
 
-# Define Start (Center)
-start_pos = (ROWS // 2, COLS // 2)
+    # 2. Connect Rooms (The Guided Miner)
+    # We use fewer tunnels now because they are targeted and effective
+    grid_map = miner.mine_tunnels(room_grid)
 
-# Find a valid End point
-# We just pick random points until we hit a floor tile that isn't the start
-end_pos = start_pos
-while end_pos == start_pos or grid_map[end_pos[0]][end_pos[1]] == 0:
-    r = random.randint(0, ROWS-1)
-    c = random.randint(0, COLS-1)
-    end_pos = (r, c)
+    # 3. Pick Start/End
+    # (Simple logic: Pick random floor tiles)
+    while True:
+        sr, sc = random.randint(0, ROWS-1), random.randint(0, COLS-1)
+        if grid_map[sr][sc] == 1:
+            start_pos = (sr, sc)
+            break
+    
+    while True:
+        er, ec = random.randint(0, ROWS-1), random.randint(0, COLS-1)
+        if grid_map[er][ec] == 1 and (er,ec) != start_pos:
+            end_pos = (er, ec)
+            break
 
-print(f"Start: {start_pos}, End: {end_pos}")
+    # 4. THE CHECK: Does a path exist?
+    # If this returns a list, the loop breaks. If None, it repeats.
+    path = search.astar(grid_map, start_pos, end_pos)
 
-# Run A* Search
-path = search.astar(grid_map, start_pos, end_pos)
-print(f"Path found length: {len(path) if path else 0}")
+print(f"Success! Map generated in {attempts} attempts.")
 
 # --- DRAWING FUNCTION ---
 def draw_grid():
